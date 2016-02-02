@@ -401,7 +401,52 @@ class PrestaShopWebservice
 		return true;
 	}
 
+    /**
+     * Upload file
+    */
+   public function uploadFile($options, $file)
+   {
+       if (isset($options['resource'], $options['file_fieldname'], $file) ||
+               isset($options['url'], $options['file_fieldname'], $file))
+       {
+           $url = (isset($options['resource']) ? $this->url.'/api/' . $options['resource'] : $options['url']);
+           if (isset($options['id_shop']))
+           {
+               $url .= '&id_shop=' . $options['id_shop'];
+           }
+           if (isset($options['id_group_shop']))
+           {
+               $url .= '&id_group_shop=' . $options['id_group_shop'];
+           }
+       }
+       else
+       {
+           throw new PrestaShopWebserviceException('Bad parameters given');
+       }
 
+       if (!isset($options['data']) || !is_array($options['data']))
+       {
+           $options['data'] = array();
+       }
+
+       // We need to remove debug temporary
+       $saveDebug = $this->debug;
+       $this->debug = FALSE;
+
+       $image_mime = image_type_to_mime_type(exif_imagetype($file));
+       $data = array_merge(array($options['file_fieldname'] => new CurlFile($file, $image_mime)), $options['data']);
+       $curlOptions = array(
+               CURLOPT_URL => $url,
+               CURLOPT_POST => 1,
+               CURLOPT_POSTFIELDS => $data
+       );
+
+       $request = self::executeRequest($url, $curlOptions);
+       // We reset the debug flag
+       $this->debug = $saveDebug;
+       self::checkStatusCode($request['status_code']);
+       return self::parseXML($request['response']);
+   }
 }
 
 /**
